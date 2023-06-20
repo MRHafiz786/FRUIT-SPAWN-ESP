@@ -1,0 +1,82 @@
+local fruitClassName = "Model" -- Replace "FruitClassName" with the actual classname of the fruit
+
+local player = game.Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local function createFloatingLabel(fruit)
+    local primaryPart = fruit.PrimaryPart
+    if not primaryPart then
+        return
+    end
+
+    local label = Instance.new("BillboardGui")
+    label.Name = "FloatingLabel"
+    label.Adornee = primaryPart
+    label.Size = UDim2.new(0, 100, 0, 40)
+    label.StudsOffset = Vector3.new(0, 2, 0)
+    label.AlwaysOnTop = true
+    label.Parent = primaryPart
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "TextLabel"
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 18
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.Text = "Fruit"
+    textLabel.Parent = label
+
+    local function updatePosition()
+        local position = primaryPart.Position
+        local distance = (position - camera.CFrame.Position).Magnitude
+        local viewportPosition = camera:WorldToViewportPoint(position)
+        if viewportPosition.Z > 0 then
+            local screenPosition = viewportPosition * camera.ViewportSize
+            label.Enabled = true
+            label.Size = UDim2.new(0, 1000 / viewportPosition.Z, 0, 2000 / viewportPosition.Z)
+            label.Position = UDim2.new(0, screenPosition.X - label.Size.X.Offset / 2, 0, screenPosition.Y - label.Size.Y.Offset)
+            textLabel.Text = string.format("Fruit\nDistance: %.1f", distance)
+        else
+            label.Enabled = false
+        end
+    end
+
+    game:GetService("RunService").RenderStepped:Connect(updatePosition)
+end
+
+local function onFruitAdded(fruit)
+    if fruit:IsA(fruitClassName) then
+        createFloatingLabel(fruit)
+    end
+end
+
+local function onFruitRemoved(fruit)
+    local floatingLabel = fruit:FindFirstChild("FloatingLabel")
+    if floatingLabel then
+        floatingLabel:Destroy()
+    end
+end
+
+-- Check existing fruits
+for _, fruit in ipairs(workspace:GetChildren()) do
+    onFruitAdded(fruit)
+end
+
+-- Listen for new fruits
+workspace.ChildAdded:Connect(onFruitAdded)
+
+-- Listen for removed fruits
+workspace.ChildRemoved:Connect(onFruitRemoved)
+
+-- Keep labels enabled
+game:GetService("RunService").Heartbeat:Connect(function()
+    for _, fruit in ipairs(workspace:GetChildren()) do
+        local label = fruit:FindFirstChild("FloatingLabel")
+        if label then
+            label.Enabled = true
+        end
+    end
+end)
